@@ -1,0 +1,18 @@
+import utils.io.InputReader;
+import utils.io.OutputWriter;
+
+public class JSolution {
+
+    static void solve(int cs, InputReader input, OutputWriter output) {
+
+    }
+
+    public static void main(String[] args) {
+        //~~ ️Keep the Dreams Alive in Your Heart ❤️~~//
+        try (OutputWriter output = new OutputWriter(System.out)) {
+            InputReader input = new InputReader(System.in);
+            int tCases = input.nextInt();
+            for (int cs = 1; cs <= tCases; ++cs) solve(cs, input, output);
+        }
+    }
+}

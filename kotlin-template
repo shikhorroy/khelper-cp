@@ -1,0 +1,15 @@
+import util.io.InputReader
+import util.io.OutputWriter
+
+fun solve(cs: Int, input: InputReader, output: OutputWriter) {
+
+}
+
+fun main() {
+    //~~ ️Keep the Dreams Alive in Your Heart ❤️~~//
+    val input = InputReader(System.`in`)
+    OutputWriter(System.out).use {
+        val tCases = input.nextInt()
+        for (cs in 1..tCases) solve(cs, input, it)
+    }
+}
