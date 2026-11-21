@@ -1,0 +1,31 @@
+# Build output from IntelliJ
+out/
+build/
+target/
+*.class
+
+# IntelliJ files that hold personal or local state
+.idea/workspace.xml
+.idea/shelf/
+.idea/httpRequests/
+.idea/dataSources/
+.idea/dataSources.local.xml
+.idea/db-forest-config.xml
+.idea/copilot*.xml
+.idea/khelper-problems.xml
+.idea/developer-tools.xml
+.idea/misc.xml
+*.iws
+
+# Keep the output folder, but not the files the plugin writes into it
+output/*
+!output/.gitkeep
+
+# Test input and output files from local runs
+*.in
+*.out
+
+# OS files
+.DS_Store
+Thumbs.db
+*~
