@@ -4,6 +4,10 @@ build/
 target/
 *.class
 
+# Gradle and Kotlin local caches
+.gradle/
+.kotlin/
+
 # IntelliJ files that hold personal or local state
 .idea/workspace.xml
 .idea/shelf/
