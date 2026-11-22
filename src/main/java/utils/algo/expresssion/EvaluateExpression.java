@@ -1,10 +1,14 @@
 package utils.algo.expresssion;
 
-import java.util.Stack;
-
 /**
  * Algo: Shunting Yard by Edgar Dijkstra.
- * Complexity: O(n)
+ * Complexity: O(n) time and memory, n = expression length.
+ * <p>
+ * Supports non-negative integer literals, binary + - * /, unary + and - (for example "-3", "2*-3", "-(1+2)"),
+ * parentheses and whitespace. Arithmetic is int arithmetic: / truncates toward zero and overflow wraps around.
+ * A malformed expression (unknown character, missing operand, unbalanced parentheses, empty input) throws
+ * IllegalArgumentException; a literal above Integer.MAX_VALUE throws NumberFormatException.
+ * </p>
  * <p>
  * Description:
  * 1. While there are still tokens to be read in,
@@ -39,46 +43,87 @@ import java.util.Stack;
  */
 public class EvaluateExpression {
 
+    //~ Operator-stack marker for unary minus. It binds tighter than * and /.
+    private static final char NEGATE = 'n';
+
     public static int evaluate(String expression) {
         char[] tokens = expression.toCharArray();
 
-        Stack<Integer> values = new Stack<>();
-        Stack<Character> ops = new Stack<>();
+        int[] values = new int[tokens.length];
+        char[] ops = new char[tokens.length];
+        int valueTop = 0, opTop = 0;
+        //~ True when the next token must start an operand: a number, '(' or a unary sign.
+        boolean expectOperand = true;
 
         for (int i = 0; i < tokens.length; i++) {
-            if (tokens[i] == ' ') continue;
+            char c = tokens[i];
+            if (Character.isWhitespace(c)) continue;
 
-            if (tokens[i] >= '0' && tokens[i] <= '9') {
-                StringBuilder sb = new StringBuilder();
-                while (i < tokens.length && tokens[i] >= '0' && tokens[i] <= '9') sb.append(tokens[i++]);
-                values.push(Integer.parseInt(sb.toString()));
+            if (c >= '0' && c <= '9') {
+                if (!expectOperand) throw malformed(expression, i);
+                long number = 0;
+                while (i < tokens.length && tokens[i] >= '0' && tokens[i] <= '9') {
+                    number = number * 10 + (tokens[i++] - '0');
+                    if (number > Integer.MAX_VALUE) {
+                        throw new NumberFormatException("Number too large in: " + expression);
+                    }
+                }
                 i--;
-            } else if (tokens[i] == '(') ops.push(tokens[i]);
-            else if (tokens[i] == ')') {
-                while (ops.peek() != '(') values.push(
-                        applyOp(ops.pop(), values.pop(), values.pop())
-                );
-                ops.pop();
-            } else if (tokens[i] == '+' || tokens[i] == '-' || tokens[i] == '*' || tokens[i] == '/') {
-                while (!ops.empty() && hasPrecedence(tokens[i], ops.peek())) values.push(
-                        applyOp(ops.pop(), values.pop(), values.pop())
-                );
-                ops.push(tokens[i]);
+                values[valueTop++] = (int) number;
+                expectOperand = false;
+            } else if (c == '(') {
+                if (!expectOperand) throw malformed(expression, i);
+                ops[opTop++] = c;
+            } else if (c == ')') {
+                if (expectOperand) throw malformed(expression, i);
+                while (opTop > 0 && ops[opTop - 1] != '(') valueTop = apply(ops[--opTop], values, valueTop);
+                if (opTop == 0) throw malformed(expression, i);
+                opTop--;
+            } else if (c == '+' || c == '-' || c == '*' || c == '/') {
+                if (expectOperand) {
+                    if (c == '*' || c == '/') throw malformed(expression, i);
+                    if (c == '-') ops[opTop++] = NEGATE;
+                    continue;
+                }
+                while (opTop > 0 && hasPrecedence(c, ops[opTop - 1])) valueTop = apply(ops[--opTop], values, valueTop);
+                ops[opTop++] = c;
+                expectOperand = true;
+            } else {
+                throw malformed(expression, i);
             }
         }
+        if (expectOperand) throw malformed(expression, tokens.length);
 
-        while (!ops.empty()) values.push(
-                applyOp(ops.pop(), values.pop(), values.pop())
-        );
-
-        return values.pop();
+        while (opTop > 0) {
+            char op = ops[--opTop];
+            if (op == '(') throw new IllegalArgumentException("Unclosed '(' in: " + expression);
+            valueTop = apply(op, values, valueTop);
+        }
+        return values[0];
     }
 
+    /**
+     * True when the operator op2 on top of the stack must be applied before pushing op1, that is when op2 has the
+     * same or a higher precedence (all binary operators are left-associative). Parentheses never qualify.
+     */
     public static boolean hasPrecedence(char op1, char op2) {
         if (op2 == '(' || op2 == ')') return false;
-        return (op1 != '*' && op1 != '/') || (op2 != '+' && op2 != '-');
+        return precedence(op2) >= precedence(op1);
     }
 
+    private static int precedence(char op) {
+        if (op == NEGATE) return 3;
+        if (op == '*' || op == '/') return 2;
+        if (op == '+' || op == '-') return 1;
+        return 0;
+    }
+
+    /**
+     * Applies a binary operator: returns a op b. Note the argument order: b (right operand) comes first.
+     *
+     * @throws UnsupportedOperationException on division by zero.
+     * @throws IllegalArgumentException      on an unknown operator.
+     */
     public static int applyOp(char op, int b, int a) {
         switch (op) {
             case '+':
@@ -91,6 +136,24 @@ public class EvaluateExpression {
                 if (b == 0) throw new UnsupportedOperationException("Cannot divide by zero");
                 return a / b;
         }
-        return 0;
+        throw new IllegalArgumentException("Unknown operator: " + op);
+    }
+
+    /**
+     * Pops the operands of op, pushes the result and returns the new value-stack size.
+     */
+    private static int apply(char op, int[] values, int top) {
+        if (op == NEGATE) {
+            values[top - 1] = -values[top - 1];
+            return top;
+        }
+        int b = values[--top];
+        int a = values[--top];
+        values[top++] = applyOp(op, b, a);
+        return top;
+    }
+
+    private static IllegalArgumentException malformed(String expression, int position) {
+        return new IllegalArgumentException("Malformed expression at index " + position + ": " + expression);
     }
 }

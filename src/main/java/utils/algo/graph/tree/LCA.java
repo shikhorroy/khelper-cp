@@ -1,82 +1,73 @@
 package utils.algo.graph.tree;
 
-import java.util.List;
-
 /**
- * Lowest Common Ancestor (LCA) - using sparse table / binary lifting.<br><br>
+ * Lowest Common Ancestor (LCA) with binary lifting.<br><br>
+ * Works when tree edges are added one way (parent to child) or both ways. Traversal is iterative,
+ * so deep trees (a path of 2e5 nodes) do not overflow the stack. Nodes not reachable from the root
+ * are treated as their own roots at level 0.<br><br>
  * <b>Complexity:</b><br>
- * Preprocessing: O(n x log(n))<br>
- * Query: O(log(n))<br>
- * Source: <a href="http://www.shafaetsplanet.com/?p=1831"> Safayet Plant</a>
+ * Preprocessing: O(n log n)<br>
+ * Query: O(log n)<br>
+ * Source: <a href="http://www.shafaetsplanet.com/?p=1831"> Shafaet's Planet</a>
  */
 public class LCA {
-    private final int SENTINEL = -1;
+    private static final int SENTINEL = -1;
 
-    private final int powerOf2;
+    //~ Number of table rows: 2^log > n - 1, so any depth difference fits in log bits.
+    private final int log;
 
     private final Tree tree;
     private final int[] level;
-    private final boolean[] visited;
 
-    /**
-     * <code>table[currNode][i]</code> - indicates <code>2<sup>i</sup>-th</code> node
-     * above from <code>currNode</code>.
-     */
-    private final int[][] table;
+    //~ up[p][node] = the 2^p-th ancestor of node. The root points to itself,
+    //~ so jumps past the root stay at the root.
+    private final int[][] up;
 
     public LCA(Tree tree) {
         this.tree = tree;
 
         int nodes = this.tree.getNodesCount();
-        this.powerOf2 = this.calculateRequiredPowerOf2For(nodes);
+        int lg = 1;
+        while ((1 << lg) < nodes) lg++;
+        this.log = lg;
 
         level = new int[nodes];
-        visited = new boolean[nodes];
-        table = new int[nodes][powerOf2];
-
-        table[tree.root][0] = SENTINEL;
-        binaryLifting(tree.root);
-    }
-
-    public int levelOf(int node) {
-        if (node > tree.getNodesCount()) throw new AssertionError("node " + node + " - is out of bound");
-        return level[node];
-    }
-
-    private int calculateRequiredPowerOf2For(int n) {
-        int power = 1;
-        while ((1 << power) <= n) power++;
-        return power;
-    }
-
-    /**
-     * DFS recursive function to populate level, parent and sparse table.
-     *
-     * @param currNode current node from where child nodes will be traversed.
-     */
-    private void binaryLifting(int currNode) {
-        visited[currNode] = true;
-        List<Integer> children = tree.childrenOf(currNode);
-        for (int child : children) {
-            if (visited[child]) continue;
-
-            level[child] = level[currNode] + 1;
-            //~ table[child][0] - indicates 2^0=1 level up node from child node,
-            //~ i.e. the parent node.
-            table[child][0] = currNode;
-
-            for (int p = 1; p < this.powerOf2; p++) {
-                if (table[child][p - 1] != SENTINEL) {
-                    table[child][p] = table[table[child][p - 1]][p - 1];
-                } else {
-                    table[child][p] = SENTINEL;
-                }
-            }
-
-            binaryLifting(child);
+        up = new int[log][nodes];
+        if (nodes == 0) return;
+        buildParents(nodes);
+        for (int p = 1; p < log; p++) {
+            int[] prev = up[p - 1], cur = up[p];
+            for (int v = 0; v < nodes; v++) cur[v] = prev[prev[v]];
         }
     }
 
+    /** BFS from the root to fill level[] and up[0][] (the direct parent). */
+    private void buildParents(int nodes) {
+        int[] parent = up[0];
+        for (int v = 0; v < nodes; v++) parent[v] = v;
+        boolean[] visited = new boolean[nodes];
+        int[] queue = new int[nodes];
+        int head = 0, tail = 0;
+        queue[tail++] = tree.root;
+        visited[tree.root] = true;
+        while (head < tail) {
+            int u = queue[head++];
+            for (int child : tree.childrenOf(u)) {
+                if (visited[child]) continue;
+                visited[child] = true;
+                parent[child] = u;
+                level[child] = level[u] + 1;
+                queue[tail++] = child;
+            }
+        }
+    }
+
+    public int levelOf(int node) {
+        if (node < 0 || node >= tree.getNodesCount()) throw new AssertionError("node " + node + " - is out of bound");
+        return level[node];
+    }
+
+    /** Lowest common ancestor of node1 and node2. O(log n). */
     public int findLCA(int node1, int node2) {
         if (level[node1] < level[node2]) {
             int tmp = node1;
@@ -84,28 +75,26 @@ public class LCA {
             node2 = tmp;
         }
 
-        int log = this.calculateRequiredPowerOf2For(level[node1]);
-        for (int p = log; p >= 0; p--)
-            if (level[node1] - (1 << p) >= level[node2])
-                node1 = table[node1][p];
-
+        node1 = lift(node1, level[node1] - level[node2]);
         if (node1 == node2) return node1;
 
-        for (int p = log; p >= 0; p--) {
-            if (table[node1][p] != SENTINEL && table[node1][p] != table[node2][p]) {
-                node1 = table[node1][p];
-                node2 = table[node2][p];
+        for (int p = log - 1; p >= 0; p--) {
+            if (up[p][node1] != up[p][node2]) {
+                node1 = up[p][node1];
+                node2 = up[p][node2];
             }
         }
-
-        return table[node1][0];
+        return up[0][node1];
     }
 
+    /** The k-th ancestor of node (k = 0 gives node itself), or -1 if k is larger than its level. */
     public int kthAncestor(int node, int k) {
-        if (k > level[node]) return SENTINEL;
+        if (k < 0 || k > level[node]) return SENTINEL;
+        return lift(node, k);
+    }
 
-        int log = this.calculateRequiredPowerOf2For(k) + 1;
-        while (--log >= 0) if (((1 << log) & k) > 0) node = table[node][log];
+    private int lift(int node, int k) {
+        for (int p = 0; k > 0; p++, k >>= 1) if ((k & 1) != 0) node = up[p][node];
         return node;
     }
 }

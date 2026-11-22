@@ -23,27 +23,23 @@ public class Pair<F, S> implements Comparable<Pair<F, S>> {
 
     @Override
     public int hashCode() {
-        int hash = 7;
-        hash = 31 * hash + (first != null ? first.hashCode() : 0);
-        hash = 31 * hash + (second != null ? second.hashCode() : 0);
-        return hash;
+        return 31 * Objects.hashCode(first) + Objects.hashCode(second);
     }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o instanceof Pair<?, ?>) {
-            Pair<?, ?> pair = (Pair<?, ?>) o;
-            if (!Objects.equals(first, pair.first)) return false;
-            return Objects.equals(second, pair.second);
-        }
-        return false;
+        return o instanceof Pair<?, ?> p && Objects.equals(first, p.first) && Objects.equals(second, p.second);
     }
 
+    /**
+     * Orders by first, then by second, using their natural order.
+     * Both types must be Comparable; otherwise this throws ClassCastException.
+     */
     @Override
-    public int compareTo(Pair o) {
-        int comparedVal = Integer.compare(this.first.hashCode(), o.first.hashCode());
-        if (comparedVal == 0) return Integer.compare(this.second.hashCode(), o.second.hashCode());
-        return comparedVal;
+    @SuppressWarnings("unchecked")
+    public int compareTo(Pair<F, S> o) {
+        int c = ((Comparable<F>) first).compareTo(o.first);
+        return c != 0 ? c : ((Comparable<S>) second).compareTo(o.second);
     }
 }

@@ -1,168 +1,124 @@
 package utils.algo.ds.segtree;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
+/**
+ * Generic segment tree over a list. A subclass gives the combine operation ({@link #calculate}) and its
+ * neutral value ({@link #invalidReturn}).
+ * Build: O(n). Range query and point update: O(log n). Range update: O(r - l + 1), it visits every leaf
+ * in the range (no lazy propagation).
+ * Node 1 is the root, node i has children 2i and 2i+1. Query bounds outside [0, n-1] are clamped.
+ *
+ * @param <T> element type
+ */
 public abstract class SegmentTree<T> {
 
-    private final List<T> array;
+    //~ number of elements
+    private final int n;
+    //~ tree.get(i) = calculate over the segment of node i; index 0 is unused
     protected final List<T> tree;
 
     /**
-     * Return value for an invalid range query.<br>
-     * e.g. this should be zero(0) for range sum query, max infinity if range minimum query etc.
+     * Value for an empty range. It must be neutral for {@link #calculate}:
+     * e.g. 0 for range sum, +infinity for range minimum.
      */
     public abstract T invalidReturn();
 
     /**
-     * Expected calculation for range query.<br>
-     * e.g. this should - return (leftValue + rightValue) for range sum query,<br>
-     * return Math.min(leftValue, rightValue) for range minimum query etc.
+     * Combine the values of two neighbour segments, e.g. {@code leftValue + rightValue} for range sum,
+     * {@code Math.min(leftValue, rightValue)} for range minimum.
      *
-     * @param leftValue  left subtree value.
-     * @param rightValue right subtree value.
-     * @return expected result after calculation.
+     * @param leftValue  left subtree value
+     * @param rightValue right subtree value
+     * @return the combined value
      */
     public abstract T calculate(T leftValue, T rightValue);
 
+    /**
+     * Change a leaf on update. The default sets the leaf to {@code value}.
+     * Override it to e.g. add instead: {@code tree.set(currIndex, tree.get(currIndex) + value)}.
+     *
+     * @param value     the update value
+     * @param currIndex tree index of the leaf
+     */
     public void applyChange(T value, int currIndex) {
         tree.set(currIndex, value);
     }
 
     public SegmentTree(List<T> array) {
-        this.array = array;
-        tree = new ArrayList<>();
-        for (int i = 0, sz = 4 * array.size() + 1; i < sz; i++) tree.add(null);
-
-        this.buildTree(0, array.size() - 1, 1);
+        this.n = array.size();
+        this.tree = new ArrayList<>(Collections.nCopies(4 * n + 1, (T) null));
+        if (n > 0) buildTree(array, 0, n - 1, 1);
     }
 
-    private void buildTree(int start, int end, int currIndex) {//~ O(n)
+    private void buildTree(List<T> array, int start, int end, int currIndex) {
         if (start == end) {
-            tree.set(currIndex, this.array.get(start));
-        } else {
-            int mid = (start + end) >> 1;
-            buildTree(start, mid, left(currIndex));
-            buildTree(mid + 1, end, right(currIndex));
-
-            tree.set(currIndex, this.calculate(tree.get(left(currIndex)), tree.get(right(currIndex))));
+            tree.set(currIndex, array.get(start));
+            return;
         }
+        int mid = (start + end) >>> 1;
+        buildTree(array, start, mid, 2 * currIndex);
+        buildTree(array, mid + 1, end, 2 * currIndex + 1);
+        pull(currIndex);
     }
 
     /**
-     * Return expected result within range.
-     *
-     * @param start 0 based start index
-     * @param end   0 base end index
-     * @return expected query result
+     * Combine the values from index start to index end, both inclusive and 0-based. O(log n).
+     * An empty range returns {@link #invalidReturn()}.
      */
     public T query(int start, int end) {
-        return query(0, array.size() - 1, new Query(start, end), 1);
+        if (n == 0) return invalidReturn();
+        return query(0, n - 1, start, end, 1);
     }
 
     /**
-     * Update index value.
+     * Apply {@link #applyChange} to the leaf at {@code index}. O(log n).
      *
-     * @param index zero(0) based index.
-     * @param val   expected value to be updated.
+     * @param index 0-based index
+     * @param val   the update value
      */
     public void update(int index, T val) {
-        update(0, array.size() - 1, new Update(index, val), 1);
+        if (n == 0) return;
+        update(0, n - 1, index, index, val, 1);
     }
 
+    /**
+     * Apply {@link #applyChange} to every leaf from index start to index end, both inclusive.
+     * O(end - start + 1), because it has no lazy propagation.
+     */
     public void update(int start, int end, T val) {
-        update(0, array.size() - 1, new RangeUpdate(start, end, val), 1);
+        if (n == 0) return;
+        update(0, n - 1, start, end, val, 1);
     }
 
-    private void update(int start, int end, Update update, int currIndex) {
-        //~ index out of bound:
-        if (end < update.index || update.index < start) return;
+    private void update(int start, int end, int ql, int qr, T val, int currIndex) {
+        if (end < ql || qr < start) return;
 
-        if (start == end) applyChange(update.value, currIndex);
-        else {
-            int mid = (start + end) >> 1;
-            update(start, mid, update, left(currIndex));
-            update(mid + 1, end, update, right(currIndex));
-
-            tree.set(currIndex, this.calculate(tree.get(left(currIndex)), tree.get(right(currIndex))));
+        if (start == end) {
+            applyChange(val, currIndex);
+            return;
         }
+        int mid = (start + end) >>> 1;
+        update(start, mid, ql, qr, val, 2 * currIndex);
+        update(mid + 1, end, ql, qr, val, 2 * currIndex + 1);
+        pull(currIndex);
     }
 
-    private void update(int start, int end, RangeUpdate update, int currIndex) {
-        //~ index out of bound:
-        if (end < update.start || update.end < start) return;
+    private T query(int start, int end, int ql, int qr, int currIndex) {
+        //~ full overlap: node segment is inside the query range
+        if (ql <= start && end <= qr) return tree.get(currIndex);
+        //~ no overlap: node segment is outside the query range
+        if (end < ql || qr < start) return invalidReturn();
 
-        if (start == end) applyChange(update.value, currIndex);
-        else {
-            int mid = (start + end) >> 1;
-            update(start, mid, update, left(currIndex));
-            update(mid + 1, end, update, right(currIndex));
-
-            tree.set(currIndex, this.calculate(tree.get(left(currIndex)), tree.get(right(currIndex))));
-        }
-    }
-
-    private T query(int start, int end, Query query, int currIndex) {// O(log n)
-        //~ complete overlap: inside query range
-        // query:    |2------------5|
-        // case 01:  |   3------4   | start = 3, end = 4
-        // case 02:  |2------------5| start = 2, end = 5
-        if (query.start <= start && end <= query.end) return tree.get(currIndex);
-
-        //~ no overlap: current segment outside query range
-        // query:    |      3------------5         |
-        // case 01:  |1---2                        | start = 1, end = 2
-        // case 02:  |                      6-----8| start = 6, end = 8
-        if (end < query.start || query.end < start) return this.invalidReturn();
-
-        //~ partial overlap:
-        // query:    |      3------------7    |
-        // case 01:  |1-------4               | start = 1, end = 4
-        // case 02:  |              5--------8| start = 5, end = 8
-        int mid = (start + end) >> 1;
-        T left = query(start, mid, query, left(currIndex));
-        T right = query(mid + 1, end, query, right(currIndex));
-
+        int mid = (start + end) >>> 1;
+        T left = query(start, mid, ql, qr, 2 * currIndex);
+        T right = query(mid + 1, end, ql, qr, 2 * currIndex + 1);
         return calculate(left, right);
     }
 
-    //~ utilities: start ~//
-    private int left(int index) {
-        return (index << 1);
+    private void pull(int currIndex) {
+        tree.set(currIndex, calculate(tree.get(2 * currIndex), tree.get(2 * currIndex + 1)));
     }
-
-    private int right(int index) {
-        return (index << 1) + 1;
-    }
-
-    private static class Query {
-        int start, end;
-
-        Query(int start, int end) {
-            this.start = start;
-            this.end = end;
-        }
-    }
-
-    private class Update {
-        T value;
-        int index;
-
-        Update(int index, T value) {
-            this.index = index;
-            this.value = value;
-        }
-    }
-
-    private class RangeUpdate {
-        T value;
-        int start, end;
-
-        RangeUpdate(int start, int end, T value) {
-            this.start = start;
-            this.end = end;
-            this.value = value;
-        }
-    }
-    //~ utilities: end ~//
 }

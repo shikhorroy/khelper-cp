@@ -1,14 +1,13 @@
 package utils.utility;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class ArrayUtility {
 
     private static <T> void safetyCheck(List<T> list) {
         Objects.requireNonNull(list);
         //~ if list is empty, then it can't be determined whether the list items are evens or odds.
-        if (list.size() == 0) throw new RuntimeException("Provided list can't be empty");
+        if (list.isEmpty()) throw new IllegalArgumentException("Provided list can't be empty");
     }
 
     public static <T> boolean areAllEvens(List<T> list) {
@@ -35,20 +34,16 @@ public class ArrayUtility {
 
     /**
      * Count number frequency
-     * Complexity: O(n), n = length of itemList.
+     * Complexity: O(n) expected (hash map), n = length of itemList.
      *
      * @param itemList list of items of type T.
      * @param <T>      of any type.
      * @return Map of item count.
      */
     public static <T> Map<T, Integer> countFrequency(List<T> itemList) {
-        return itemList.stream()
-                .collect(Collectors.toMap(
-                                item -> item,
-                                item -> 1,
-                                (existingValue, newValue) -> existingValue + 1
-                        )
-                );
+        Map<T, Integer> freq = new HashMap<>();
+        for (T item : itemList) freq.merge(item, 1, Integer::sum);
+        return freq;
     }
 
     /**
@@ -58,9 +53,9 @@ public class ArrayUtility {
      * @param defaultValue this value will be set the to array.
      */
     public static void fill(Object array, Object defaultValue) {
-        Queue<Object> q = new LinkedList<>();
+        Deque<Object> q = new ArrayDeque<>();
         q.add(array);
-        while (q.size() > 0) {
+        while (!q.isEmpty()) {
             array = q.poll();
             Class<?> eClass = array.getClass();
             if (eClass == byte[].class) Arrays.fill((byte[]) array, (Byte) defaultValue);

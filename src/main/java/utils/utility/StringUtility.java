@@ -1,5 +1,6 @@
 package utils.utility;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
@@ -8,16 +9,15 @@ import java.util.stream.Collectors;
 public class StringUtility {
 
     /**
-     * Complexity: O(n^2)
+     * Complexity: O(n log n)
      *
      * @param string - what need to sort alphabetically
      * @return alphabetically sorted string
      */
     public static String sort(String string) {
-        return string.chars()
-                .sorted()
-                .mapToObj(c -> String.valueOf((char) c))
-                .collect(Collectors.joining());
+        char[] chars = string.toCharArray();
+        Arrays.sort(chars);
+        return new String(chars);
     }
 
     /**
@@ -35,27 +35,21 @@ public class StringUtility {
 
     /**
      * Check if target string is a sub-sequence of source string.
-     * Complexity: O(m x n), m - length of source string, n - length of target string
+     * Complexity: O(m), m - length of source string
      *
      * @param source where need to check
      * @param target is to check
-     * @return true if target is a sub-sequence, false otherwise.
+     * @return true if target is a sub-sequence, false otherwise. An empty target is always a sub-sequence.
      */
     public static boolean isSubSequence(String source, String target) {
         int sourceLength = source.length(), targetLength = target.length();
         if (sourceLength < targetLength) return false;
 
-        int targetIndex = 0, sourceIndex = 0;
-        while (sourceIndex < sourceLength && targetIndex < targetLength) {
-            char targetChar = target.charAt(targetIndex++);
-            while (sourceIndex < sourceLength && source.charAt(sourceIndex++) != targetChar) ;
+        int targetIndex = 0;
+        for (int i = 0; i < sourceLength && targetIndex < targetLength; i++) {
+            if (source.charAt(i) == target.charAt(targetIndex)) targetIndex++;
         }
-
-        return (
-                targetIndex == targetLength
-                        && source.charAt(sourceIndex - 1) == target.charAt(targetIndex - 1) //~ source: abcde, target: acf
-
-        );
+        return targetIndex == targetLength;
     }
 
     public static Set<Character> uniqueCharsSet(String string) {

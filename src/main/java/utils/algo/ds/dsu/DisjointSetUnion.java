@@ -1,45 +1,71 @@
 package utils.algo.ds.dsu;
 
-import utils.utility.Swap;
-
-import java.util.ArrayList;
-import java.util.List;
-
+/**
+ * Disjoint set union (union-find) on nodes {@code 0..nodes-1}.
+ * Uses union by size and path halving, so each operation is amortized O(alpha(n)), almost O(1).
+ * {@code find} is iterative, so a long chain cannot overflow the stack.
+ */
 public class DisjointSetUnion {
 
-    private List<Integer> link;
-    private List<Integer> size;
-
-    private void init(int nodes) {
-        for (int i = 0; i < nodes; i++) {
-            link.add(i);
-            size.add(1);
-        }
-    }
+    //~ parent[v] is the parent of v; a root points to itself
+    private final int[] parent;
+    //~ size[r] is the number of nodes in the set whose root is r (only valid for roots)
+    private final int[] size;
+    //~ number of disjoint sets right now
+    private int components;
 
     public DisjointSetUnion(int nodes) {
-        link = new ArrayList<>();
-        size = new ArrayList<>();
-        this.init(nodes);
+        parent = new int[nodes];
+        size = new int[nodes];
+        for (int i = 0; i < nodes; i++) {
+            parent[i] = i;
+            size[i] = 1;
+        }
+        components = nodes;
     }
 
+    /** Root of the set that holds {@code node}. Amortized O(alpha(n)). */
     public int find(int node) {
-        if (node == link.get(node)) return node;
-
-        link.set(node, find(link.get(node)));
-        return link.get(node);
+        while (parent[node] != node) {
+            parent[node] = parent[parent[node]];
+            node = parent[node];
+        }
+        return node;
     }
 
-    public void union(int firstNode, int secondNode) {
-        firstNode = find(firstNode);
-        secondNode = find(secondNode);
+    /**
+     * Merge the sets of the two nodes. The smaller set goes under the larger one.
+     *
+     * @return true if the nodes were in different sets and got merged, false if they were already together
+     */
+    public boolean union(int firstNode, int secondNode) {
+        int a = find(firstNode);
+        int b = find(secondNode);
+        if (a == b) return false;
 
-        if (size.get(firstNode) < size.get(secondNode)) firstNode = Swap.between(secondNode, secondNode = firstNode);
-        size.set(firstNode, size.get(firstNode) + size.get(secondNode));
-        link.set(secondNode, firstNode);
+        if (size[a] < size[b]) {
+            int tmp = a;
+            a = b;
+            b = tmp;
+        }
+        parent[b] = a;
+        size[a] += size[b];
+        components--;
+        return true;
     }
 
+    /** True if both nodes are in the same set. */
     public boolean sameParent(int firstNode, int secondNode) {
-        return this.find(firstNode) == this.find(secondNode);
+        return find(firstNode) == find(secondNode);
+    }
+
+    /** Number of nodes in the set that holds {@code node}. */
+    public int size(int node) {
+        return size[find(node)];
+    }
+
+    /** Number of disjoint sets. */
+    public int components() {
+        return components;
     }
 }

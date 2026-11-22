@@ -1,27 +1,27 @@
 package utils.algo.ds.query;
 
 /**
- * Range minimum query.
+ * A range query over a fixed array: combine all elements from index l to index r with {@link #compute}.
  *
- * @param <T> - of any type.
+ * @param <T> element type
  */
 public interface RangeQuery<T> {
 
     /**
-     * Query from l-index to r-index
+     * Combine the elements from index l to index r, both inclusive and 0-based.
      *
-     * @param l - left index
-     * @param r - right index
-     * @return a value based on compute()
+     * @param l left index
+     * @param r right index
+     * @return the result of {@link #compute} over the range
      */
     T query(int l, int r);
 
     /**
-     * Required computation for range query. e.g. min, max, gcd, lcm, sum etc.
+     * The combine operation, e.g. min, max, gcd, lcm or sum.
      *
-     * @param elem1 - first element
-     * @param elem2 - second element
-     * @return required computation value.
+     * @param elem1 first element
+     * @param elem2 second element
+     * @return the combined value
      */
     T compute(T elem1, T elem2);
 }

@@ -1,40 +1,28 @@
 package utils.algo.dp.mcm.mcm;
 
-import java.util.Arrays;
-
+/**
+ * Palindrome partitioning: min number of cuts so that every piece of the string is a palindrome.
+ * An empty string or a palindrome needs 0 cuts.
+ * Every palindrome is found by expanding around its center, so the run is O(n^2) time and O(n) memory
+ * (the classic MCM-style recursion is O(n^3)).
+ */
 public class PalindromePartitioning {
 
-    private int[][] memo;
     public int minPartitions;
-    private final String string;
 
     public PalindromePartitioning(String string) {
-        this.string = string;
-
-        int ln = string.length();
-        initMemo(ln);
-        this.minPartitions = this.recursiveDP(0, ln - 1);
-    }
-
-    private void initMemo(int ln) {
-        memo = new int[ln + 1][ln + 1];
-        for (int[] m : memo) Arrays.fill(m, -1);
-    }
-
-    private int recursiveDP(int i, int j) {
-        if (i >= j || isPalindrome(i, j)) return 0;
-        if (memo[i][j] != -1) return memo[i][j];
-
-        int minPartitions = Integer.MAX_VALUE;
-        for (int k = i; k <= j - 1; k++) {
-            int partitionsCount = recursiveDP(i, k) + recursiveDP(k + 1, j) + 1;
-            minPartitions = Math.min(minPartitions, partitionsCount);
+        char[] s = string.toCharArray();
+        int n = s.length;
+        //~ pieces[i] = min number of palindrome pieces for the prefix s[0 .. i - 1]
+        int[] pieces = new int[n + 1];
+        for (int i = 0; i <= n; i++) pieces[i] = i;
+        for (int center = 0; center < n; center++) {
+            // Odd length palindromes centered at `center`, then even length ones centered at center + 0.5.
+            for (int lo = center, hi = center; lo >= 0 && hi < n && s[lo] == s[hi]; lo--, hi++)
+                pieces[hi + 1] = Math.min(pieces[hi + 1], pieces[lo] + 1);
+            for (int lo = center, hi = center + 1; lo >= 0 && hi < n && s[lo] == s[hi]; lo--, hi++)
+                pieces[hi + 1] = Math.min(pieces[hi + 1], pieces[lo] + 1);
         }
-        return memo[i][j] = minPartitions;
-    }
-
-    private boolean isPalindrome(int i, int j) {
-        while (i < j) if (string.charAt(i++) != string.charAt(j--)) return false;
-        return true;
+        this.minPartitions = n == 0 ? 0 : pieces[n] - 1;
     }
 }

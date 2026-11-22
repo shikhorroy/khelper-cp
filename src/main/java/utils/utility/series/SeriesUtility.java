@@ -10,10 +10,14 @@ public class SeriesUtility {
      * @return xor all numbers from 1 to n
      */
     public static long xorTillN(long n) {
-        if (n % 4 == 0) return n; // If n is a multiple of 4
-        if (n % 4 == 1) return 1; // If n%4 gives remainder 1
-        if (n % 4 == 2) return n + 1; // If n%4 gives remainder 2
-        return 0; // If n%4 gives remainder 3
+        if (n < 0) throw new IllegalArgumentException("n must be >= 0: " + n);
+        // the xor prefix repeats with period 4: n, 1, n + 1, 0
+        switch ((int) (n & 3)) {
+            case 0: return n;
+            case 1: return 1;
+            case 2: return n + 1;
+            default: return 0;
+        }
     }
 
     public static int xorTillN(int n) {

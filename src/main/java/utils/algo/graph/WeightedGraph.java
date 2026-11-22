@@ -4,6 +4,11 @@ import java.security.InvalidParameterException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Weighted graph as an adjacency list of {@link Vertex} (target node + edge cost). Nodes are 0 .. n - 1.
+ * Note: {@code adjacencyList} here hides {@link Graph#adjacencyList}; the parent list is kept empty per node
+ * and is only used for {@link #getNodesCount()}.
+ */
 public class WeightedGraph extends Graph {
 
     public static class Vertex implements Comparable<Vertex> {
@@ -42,10 +47,11 @@ public class WeightedGraph extends Graph {
         init(nodes);
     }
 
+    /** Add an edge with the given cost; for BIDIRECTIONAL graphs the reverse edge is added too. */
     public void addEdge(int source, int destination, int cost) {
         int nodeCount = this.getNodesCount();
-        if (destination >= nodeCount)
-            throw new InvalidParameterException("Destination: " + destination + " should be < " + nodeCount);
+        if (source < 0 || destination < 0 || source >= nodeCount || destination >= nodeCount)
+            throw new InvalidParameterException(source + ", " + destination + " should be in [0, " + nodeCount + ")");
         this.adjacencyList.get(source).add(Vertex.of(destination, cost));
         if (this.type.equals(Type.BIDIRECTIONAL)) this.adjacencyList.get(destination).add(Vertex.of(source, cost));
     }

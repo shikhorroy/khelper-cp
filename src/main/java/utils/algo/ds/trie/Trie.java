@@ -31,6 +31,10 @@ class TrieNode {
     }
 }
 
+/**
+ * Prefix tree of words over any chars. Each node keeps its children in a map.
+ * add, search and getMatchedPrefixWord are O(length) map lookups.
+ */
 public class Trie {
     private final TrieNode root;
 
@@ -38,62 +42,34 @@ public class Trie {
         root = new TrieNode((char) 0);
     }
 
+    /** Insert a word. The empty string is allowed. */
     public void add(String word) {
         TrieNode node = root;
-        Map<Character, TrieNode> child;
-
         for (int i = 0, ln = word.length(); i < ln; ++i) {
-            child = node.getChildren();
             char ch = word.charAt(i);
-
-            if (child.containsKey(ch))
-                node = child.get(ch);
-            else {
-                TrieNode tempNode = new TrieNode(ch);
-                child.put(ch, tempNode);
-                node = tempNode;
-            }
+            node = node.getChildren().computeIfAbsent(ch, TrieNode::new);
         }
         node.setIsEnd(true);
     }
 
+    /** True if {@code key} was added as a whole word. */
     public boolean search(String key) {
         TrieNode node = root;
-        Map<Character, TrieNode> child;
-
-        for (int i = 0, ln = key.length(); i < ln; ++i) {
-            child = node.getChildren();
-            char ch = key.charAt(i);
-
-            if (child.containsKey(ch)) {
-                node = child.get(ch);
-            } else return false;
+        for (int i = 0, ln = key.length(); i < ln && node != null; ++i) {
+            node = node.getChildren().get(key.charAt(i));
         }
-        return node.isEnd();
+        return node != null && node.isEnd();
     }
 
+    /** The longest prefix of {@code string} that is an added word, or "" if there is none. */
     public String getMatchedPrefixWord(String string) {
         TrieNode node = root;
-        Map<Character, TrieNode> child;
-        StringBuilder result = new StringBuilder();
-
-        int prevMatch = 0;
+        int bestLength = 0;
         for (int i = 0, ln = string.length(); i < ln; ++i) {
-            child = node.getChildren();
-            char ch = string.charAt(i);
-
-            if (child.containsKey(ch)) {
-                result.append(ch);
-                node = child.get(ch);
-
-                if (node.isEnd())
-                    prevMatch = i + 1;
-            } else break;
+            node = node.getChildren().get(string.charAt(i));
+            if (node == null) break;
+            if (node.isEnd()) bestLength = i + 1;
         }
-
-        if (!node.isEnd())
-            return result.substring(0, prevMatch);
-
-        return result.toString();
+        return string.substring(0, bestLength);
     }
 }

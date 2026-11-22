@@ -16,4 +16,9 @@ public class Move {
     static Move of(int dx, int dy) {
         return new Move(dx, dy);
     }
+
+    @Override
+    public String toString() {
+        return "(" + dx + ", " + dy + ")";
+    }
 }

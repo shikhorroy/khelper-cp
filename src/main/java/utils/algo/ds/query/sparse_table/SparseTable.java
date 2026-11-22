@@ -6,50 +6,49 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Sparse table DS.
- * Complexity:
- * Processing - O(n x log(n))
- * Query- O(1)
+ * Sparse table for an idempotent operation (min, max, gcd, lcm, ...).
+ * Row k holds {@code compute} over each window of length 2^k.
+ * Build: O(n log n). Query: O(1), two overlapping windows.
+ * The input list is copied, so later changes to it do not affect the table.
  *
- * @param <T>
+ * @param <T> element type
  */
 public abstract class SparseTable<T> implements RangeQuery<T> {
 
+    //~ copy of the input; also row 0 of the table
     protected final List<T> itemList;
+    //~ table.get(k).get(i) = compute over itemList[i .. i + 2^k - 1]
     protected final List<List<T>> table;
 
-    /**
-     * Prepare spares table.
-     * Complexity: O(n x long(n))
-     */
-    private void init() {
-        table.add(this.itemList);//~ o-the row in sparse table.
-        for (int p = 1, sz = this.itemList.size(); (1 << p) < sz; ++p) {
-            List<T> row = new ArrayList<>();
-            for (int i = 0; i + (1 << p) <= sz; i++) {
-                T first = this.table.get(p - 1).get(i);
-                T second = this.table.get(p - 1).get(i + (1 << (p - 1)));
-                row.add(compute(first, second));
-            }
+    public SparseTable(List<T> itemList) {
+        this.itemList = new ArrayList<>(itemList);
+        this.table = new ArrayList<>();
+        build();
+    }
+
+    /** Fill every row k while a window of length 2^k still fits. O(n log n). */
+    private void build() {
+        int n = itemList.size();
+        table.add(itemList);
+        for (int k = 1; (1 << k) <= n; k++) {
+            List<T> prev = table.get(k - 1);
+            int half = 1 << (k - 1);
+            int rowSize = n - (1 << k) + 1;
+            List<T> row = new ArrayList<>(rowSize);
+            for (int i = 0; i < rowSize; i++) row.add(compute(prev.get(i), prev.get(i + half)));
             table.add(row);
         }
     }
 
-    public SparseTable(List<T> itemList) {
-        this.itemList = itemList;
-        table = new ArrayList<>();
-
-        this.init();//~ prepare spare table.
+    /** floor(log2(len)) for len >= 1, exact and O(1). */
+    protected static int log2(int len) {
+        return 31 - Integer.numberOfLeadingZeros(len);
     }
 
     @Override
     public T query(int l, int r) {
-        //~ log2(x) = log(x) / log(2)
-        int k = (int) (Math.log(r - l + 1) / Math.log(2));
-
-        int rightIndex = r - (1 << k) + 1;
-        T value1 = this.table.get(k).get(l);
-        T value2 = this.table.get(k).get(rightIndex);
-        return this.compute(value1, value2);
+        int k = log2(r - l + 1);
+        List<T> row = table.get(k);
+        return compute(row.get(l), row.get(r - (1 << k) + 1));
     }
 }

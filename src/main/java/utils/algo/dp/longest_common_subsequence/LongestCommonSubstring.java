@@ -1,43 +1,34 @@
 package utils.algo.dp.longest_common_subsequence;
 
+/**
+ * Length of the Longest Common Substring (contiguous) of two strings.
+ * Complexity: O(m * n) time, O(n) memory (two rolling rows).
+ */
 public class LongestCommonSubstring {
-    private int[][] dp;
 
-    private final int m, n;
-    private final String string1;
-    private final String string2;
+    private final char[] string1;
+    private final char[] string2;
 
     public LongestCommonSubstring(String string1, String string2) {
-        this.string1 = string1;
-        this.string2 = string2;
-
-        m = string1.length();
-        n = string2.length();
-    }
-
-    private void initDP() {
-        dp = new int[m + 1][n + 1];
-
-        dp[0][0] = 0;
-        for (int i = 1; i <= m; i++) dp[i][0] = 0;
-        for (int i = 1; i <= n; i++) dp[0][i] = 0;
+        this.string1 = string1.toCharArray();
+        this.string2 = string2.toCharArray();
     }
 
     public int iterativeDP() {
-        initDP();
-
+        int m = string1.length, n = string2.length;
+        //~ dp[i][j] = length of the common suffix of the first i and first j characters
+        int[] prev = new int[n + 1], cur = new int[n + 1];
         int maxMatched = 0;
         for (int i = 1; i <= m; i++) {
+            char a = string1[i - 1];
             for (int j = 1; j <= n; j++) {
-                if (string1.charAt(i - 1) == string2.charAt(j - 1)) {
-                    dp[i][j] = 1 + dp[i - 1][j - 1];
-                }
-                // else dp[i][j] = 0;
-                //~ no need to set 0 as it is already 0 by declaration
-                maxMatched = Integer.max(maxMatched, dp[i][j]);
+                cur[j] = a == string2[j - 1] ? 1 + prev[j - 1] : 0;
+                if (cur[j] > maxMatched) maxMatched = cur[j];
             }
+            int[] tmp = prev;
+            prev = cur;
+            cur = tmp;
         }
-
         return maxMatched;
     }
 }

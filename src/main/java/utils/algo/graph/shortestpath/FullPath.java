@@ -4,37 +4,37 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * Shared path helpers for single-source shortest path algorithms (BFS, Dijkstra).
+ * Each algorithm keeps its own {@code parent} / {@code visited} arrays, so running one does not
+ * overwrite the result of another.
+ */
 public abstract class FullPath {
-    public static List<Integer> parent;
-    public static List<Boolean> visited;
-
-    public static void init(int nodes) {
-        parent = new ArrayList<>();
-        visited = new ArrayList<>();
-
-        for (int i = 0; i < nodes; i++) {
-            parent.add(-1);
-            visited.add(false);
-        }
-    }
 
     /**
-     * Print path from source to any node destination vertex.
+     * Rebuild the path from the source to {@code destination} by following parent links.
+     * Complexity: O(path length).
      *
-     * @param destination destination node from source
+     * @return nodes from source to destination, or an empty list if destination was not reached.
      */
-    public static void printPath(int destination) {
-        if (!visited.get(destination)) {
+    static List<Integer> buildPath(int[] parent, boolean[] visited, int destination) {
+        List<Integer> path = new ArrayList<>();
+        if (!visited[destination]) return path;
+        for (int v = destination; v != -1; v = parent[v]) path.add(v);
+        Collections.reverse(path);
+        return path;
+    }
+
+    static void printPath(List<Integer> path) {
+        if (path.isEmpty()) {
             System.out.println("No path!");
-        } else {
-            List<Integer> path = new ArrayList<>();
-            for (int v = destination; v != -1; v = parent.get(v)) path.add(v);
-            Collections.reverse(path);
-            System.out.print("Path: ");
-            for (int i = 0; i < path.size(); i++) {
-                if (i != 0) System.out.print(" -> ");
-                System.out.print(path.get(i));
-            }
+            return;
         }
+        StringBuilder sb = new StringBuilder("Path: ");
+        for (int i = 0; i < path.size(); i++) {
+            if (i != 0) sb.append(" -> ");
+            sb.append(path.get(i));
+        }
+        System.out.println(sb);
     }
 }

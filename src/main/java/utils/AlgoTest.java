@@ -68,7 +68,7 @@ public class AlgoTest {
         //~ Dijkstra algo - weighted graph:
         WeightedGraph g = getWeightedGraph();
         Dijkstra.run(g, 1);
-        System.out.println(Dijkstra.distance);
+        System.out.println(Arrays.toString(Dijkstra.distance));
         Dijkstra.printPath(0);
     }
 

@@ -11,7 +11,8 @@ public class BitManipulation {
     }
 
     public static boolean isSet(long x, int nth) {
-        return (x & (1L << nth)) > 0;
+        // != 0, not > 0: bit 63 is the sign bit, so the masked value is negative
+        return (x & (1L << nth)) != 0;
     }
 
     public static long toggle(long x, int nth) {

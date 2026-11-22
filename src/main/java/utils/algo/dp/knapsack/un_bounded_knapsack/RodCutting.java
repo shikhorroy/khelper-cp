@@ -2,10 +2,15 @@ package utils.algo.dp.knapsack.un_bounded_knapsack;
 
 import java.util.List;
 
+/**
+ * Rod cutting (unbounded knapsack): max total price for cutting a rod of {@code length}, where piece i
+ * has length {@code lengths[i]} and price {@code prices[i]}. Each piece can be used any number of times.
+ * Pieces with length <= 0 are ignored. Pieces need not fill the rod exactly.
+ * Result is {@code long}, so it does not overflow.
+ * Complexity: O(n * length) time, O(length) memory.
+ */
 public class RodCutting {
-    private int[][] dp;
 
-    private final int n;
     private final int length;
     private final List<Integer> prices;
     private final List<Integer> lengths;
@@ -13,32 +18,19 @@ public class RodCutting {
     public RodCutting(int length, List<Integer> lengths, List<Integer> prices) {
         this.prices = prices;
         this.lengths = lengths;
-        this.n = lengths.size();
         this.length = length;
     }
 
-    private void initDp() {
-        dp = new int[n + 1][length + 1];
-
-        dp[0][0] = 0;
-        for (int i = 1; i <= n; i++) dp[i][0] = 0;
-        for (int c = 1; c <= length; c++) dp[0][c] = 0;
-    }
-
-    public int iterativeDP() {
-        initDp();
-
-        for (int i = 1; i <= n; i++) {
-            for (int l = 1; l <= length; l++) {
-                if (lengths.get(i - 1) <= l) {
-                    dp[i][l] = Math.max(
-                            prices.get(i - 1) + dp[i][l - lengths.get(i - 1)],
-                            dp[i][l] = dp[i - 1][l]
-                    );
-                } else dp[i][l] = dp[i - 1][l];
-            }
+    public long iterativeDP() {
+        if (length < 0) return 0;
+        //~ best[l] = max price using a rod of length l (pieces may leave some length unused)
+        long[] best = new long[length + 1];
+        for (int i = 0, n = lengths.size(); i < n; i++) {
+            int pieceLength = lengths.get(i);
+            if (pieceLength <= 0) continue;
+            long price = prices.get(i);
+            for (int l = pieceLength; l <= length; l++) best[l] = Math.max(best[l], best[l - pieceLength] + price);
         }
-
-        return dp[n][length];
+        return best[length];
     }
 }

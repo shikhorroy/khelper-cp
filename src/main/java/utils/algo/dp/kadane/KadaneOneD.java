@@ -3,13 +3,17 @@ package utils.algo.dp.kadane;
 import utils.utility.Pair;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
+/**
+ * Kadane - maximum sum of a non-empty contiguous subarray. Sums are {@code long}, so they do not overflow.
+ * {@code ranges} holds, for every end index whose best sum equals {@code maxSum}, the range (start, end)
+ * with the smallest start. For an empty or null list, {@code maxSum = 0} and {@code ranges} is empty.
+ * Complexity: O(n).
+ */
 public class KadaneOneD {
 
-    public int maxSum;
+    public long maxSum;
     private final List<Integer> list;
     public List<Pair<Integer, Integer>> ranges;
 
@@ -17,36 +21,31 @@ public class KadaneOneD {
         ranges = new ArrayList<>();
         this.list = list != null ? list : new ArrayList<>();
 
-        run();
+        if (!this.list.isEmpty()) run();
     }
 
     private void run() {
-        int start = 0, end = 0;
-        int currMaxSum = list.get(0), maxSumSoFar = list.get(0);
-
-        Map<Integer, List<Pair<Integer, Integer>>> valueRanges = new HashMap<>();
-        valueRanges.put(currMaxSum, new ArrayList<>());
-        valueRanges.get(currMaxSum).add(Pair.of(start, end));
+        int start = 0;
+        long currMaxSum = list.get(0), maxSumSoFar = currMaxSum;
+        ranges.add(Pair.of(0, 0));
 
         for (int i = 1, sz = list.size(); i < sz; i++) {
-            int currValue = list.get(i);
-            int sum = currMaxSum + currValue;
+            long currValue = list.get(i);
+            long sum = currMaxSum + currValue;
 
             if (currValue > sum) {
                 currMaxSum = currValue;
-                start = end = i;
+                start = i;
             } else {
                 currMaxSum = sum;
-                end = i;
             }
 
-            if (currMaxSum >= maxSumSoFar) {
+            if (currMaxSum > maxSumSoFar) {
                 maxSumSoFar = currMaxSum;
-                if (!valueRanges.containsKey(maxSumSoFar)) valueRanges.put(maxSumSoFar, new ArrayList<>());
-                valueRanges.get(maxSumSoFar).add(Pair.of(start, end));
+                ranges.clear();
             }
+            if (currMaxSum == maxSumSoFar) ranges.add(Pair.of(start, i));
         }
-        ranges = valueRanges.get(maxSumSoFar);
         maxSum = maxSumSoFar;
     }
 }

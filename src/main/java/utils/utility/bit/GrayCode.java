@@ -15,28 +15,29 @@ import java.util.List;
 public class GrayCode {
 
     public static int of(int number) {
-        return number ^ (number >> 1);
+        return number ^ (number >>> 1); // >>> treats the int as 32 unsigned bits
     }
 
     public static int reverseOf(int gray) {
         int n = 0;
-        for (; gray > 0; gray >>= 1) n ^= gray;
+        // >>> and != 0, so a negative value (top bit set) also ends and decodes right
+        for (; gray != 0; gray >>>= 1) n ^= gray;
         return n;
     }
 
     public static List<String> allNBits(int n) {
-        List<String> grays = new ArrayList<>();
-        String fmt = "%" + n + "s";
+        List<String> grays = new ArrayList<>(1 << n);
+        char[] bits = new char[n];
         for (int i = 0, all = (1 << n); i < all; i++) {
             int val = of(i);
-            String s = Integer.toBinaryString(val);
-            grays.add(String.format(fmt, s).replace(' ', '0'));
+            for (int b = 0; b < n; b++) bits[n - 1 - b] = (char) ('0' + ((val >> b) & 1));
+            grays.add(new String(bits));
         }
         return grays;
     }
 
     public static List<Integer> allNumbers(int n) {
-        List<Integer> grays = new ArrayList<>();
+        List<Integer> grays = new ArrayList<>(1 << n);
         for (int i = 0, all = (1 << n); i < all; i++) {
             grays.add(of(i));
         }

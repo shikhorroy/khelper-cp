@@ -1,5 +1,7 @@
 package utils.utility;
 
+import java.util.Objects;
+
 public class Utility {
 
     /**
@@ -9,8 +11,9 @@ public class Utility {
      * @param <T>    - of any type
      * @return true if all elements are equal, false otherwise.
      */
+    @SafeVarargs
     public static <T> boolean allEquals(T... values) {
-        for (int i = 1; i < values.length; i++) if (!values[i].equals(values[i - 1])) return false;
+        for (int i = 1; i < values.length; i++) if (!Objects.equals(values[i], values[0])) return false;
         return true;
     }
 
@@ -22,8 +25,9 @@ public class Utility {
      * @param <T>    - any type.
      * @return true if match found, false otherwise.
      */
+    @SafeVarargs
     public static <T> boolean anyEqual(T target, T... values) {
-        for (T value : values) if (value.equals(target)) return true;
+        for (T value : values) if (Objects.equals(value, target)) return true;
         return false;
     }
 }

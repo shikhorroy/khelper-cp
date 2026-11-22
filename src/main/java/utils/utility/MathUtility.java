@@ -5,19 +5,42 @@ import java.util.List;
 
 public class MathUtility {
 
+    public static boolean isOdd(long number) {
+        return (number & 1) != 0;
+    }
+
+    public static boolean isEven(long number) {
+        return (number & 1) == 0;
+    }
+
+    /** For boxed values in generic code. A Number is read directly, anything else is parsed. */
     public static <T> boolean isOdd(T number) {
-        long longNumber = Long.parseLong(number.toString());
-        return ((longNumber & 1) > 0);
+        return isOdd(toLong(number));
     }
 
     public static <T> boolean isEven(T number) {
-        long longNumber = Long.parseLong(number.toString());
-        return ((longNumber & 1) == 0);
+        return isEven(toLong(number));
+    }
+
+    private static long toLong(Object number) {
+        if (number instanceof Number n) return n.longValue();
+        return Long.parseLong(number.toString());
+    }
+
+    /** Floor of the square root, exact for every long (Math.sqrt alone can be off by one). */
+    public static long isqrt(long number) {
+        if (number < 0) throw new IllegalArgumentException("negative: " + number);
+        long r = (long) Math.sqrt((double) number);
+        // compare with division, because r * r can overflow near Long.MAX_VALUE
+        while (r > 0 && r > number / r) r--;
+        while (r + 1 <= number / (r + 1)) r++;
+        return r;
     }
 
     public static boolean isPerfectSquare(long number) {
-        long squareRoot = (long) Math.sqrt(number);
-        return squareRoot * squareRoot == number;
+        if (number < 0) return false;
+        long r = isqrt(number);
+        return r * r == number;
     }
 
     /**
@@ -47,19 +70,21 @@ public class MathUtility {
     }
 
     /**
-     * This will give the # of digits needed for a number num in format : base.
-     * time : O(1), space : O(1)
+     * Number of digits of {@code number} in the given base (base >= 2). The sign is not counted, and 0 has 1 digit.
+     * Uses integer division, because log10 gives wrong answers near powers of the base.
+     * Time: O(digits).
      */
     public static int countDigits(long number, int base) {
-        return (int) (1 + Math.log10(number) / Math.log10(base));
+        if (base < 2) throw new IllegalArgumentException("base must be >= 2: " + base);
+        int digits = 1;
+        // divide the negative value, so Long.MIN_VALUE also works
+        for (long n = number < 0 ? number : -number; n <= -base; n /= base) digits++;
+        return digits;
     }
 
-    /**
-     * This will give the # of digits needed for a number num in 10 base.
-     * time : O(1), space : O(1)
-     */
+    /** Number of decimal digits. See {@link #countDigits(long, int)}. */
     public static int countDigits(long number) {
-        return (int) (1 + Math.log10(number) / Math.log10(10));
+        return countDigits(number, 10);
     }
 
     /**
@@ -67,7 +92,7 @@ public class MathUtility {
      * <p>
      * Source: <a href="https://www.geeksforgeeks.org/implementing-next_permutation-in-java-with-examples/">click here</a>
      * <p>
-     * Time Complexity: O(n!)
+     * Time Complexity: O(n) per call.
      *
      * @param list - list data.
      */
@@ -111,39 +136,39 @@ public class MathUtility {
         return (n != 0 && (n & (n - 1)) == 0);
     }
 
+    /** Works for 0 <= n <= ~1.3e9; above that 5 * n * n overflows a long. */
     public static boolean isFibonacci(long n) {
+        if (n < 0) return false;
         return isPerfectSquare(5 * n * n + 4) || isPerfectSquare(5 * n * n - 4);
     }
 
 
     /**
-     * Sqrt(n) complexity solution.
+     * Trial division, O(sqrt(n)).
      */
     public static boolean isPrime(long n) {
-        if (n <= 1) return false;
-        for (long i = 3; i * i <= n; i += 2)
+        if (n < 2) return false;
+        if (n % 2 == 0) return n == 2;
+        for (long i = 3; i <= n / i; i += 2)
             if (n % i == 0) return false;
 
         return true;
     }
 
     /**
-     * Sqrt(n) complexity solution.
+     * A composite number is greater than 1 and not prime. O(sqrt(n)).
      */
     public static boolean isComposite(long n) {
-        if (n <= 2) return false;
-        for (long i = 2; i * i <= n; i++)
-            if (n % i == 0) return true;
-
-        return false;
+        return n > 1 && !isPrime(n);
     }
 
-    public static int trailingZerosOfFactorial(long n) {
-        int zeros = 0;
-        long multipleOf5 = 5;
-        while (multipleOf5 <= n) {
-            zeros += n / multipleOf5;
-            multipleOf5 *= 5;
+    /** Number of trailing zeros of n! (Legendre's formula for p = 5). O(log n). */
+    public static long trailingZerosOfFactorial(long n) {
+        long zeros = 0;
+        // divide n instead of growing 5^k, so 5^k can never overflow
+        while (n >= 5) {
+            n /= 5;
+            zeros += n;
         }
         return zeros;
     }

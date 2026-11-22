@@ -2,171 +2,167 @@ package utils.io;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.InputMismatchException;
+import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 
+/**
+ * Fast token reader for competitive programming. Reads raw bytes into one 64 KiB buffer.
+ * Tokens are split by any byte in 0..32 (space, tab, CR, LF and other control bytes).
+ */
 public class InputReader {
 
-    private int curChar;
-    private int numChars;
-    private SpaceCharFilter filter;
+    private static final int EOF = -1;
+
     private final InputStream stream;
-    private final byte[] buf = new byte[1024];
+    private final byte[] buf;
+    private int len;
+    private int ptr;
+    //~ Reused scratch space for next() and nextLine(), so a token costs no StringBuilder.
+    private byte[] tok = new byte[64];
+    //~ The byte that ended the last token. nextLine() uses it to finish that line first.
+    private int lastEnd = '\n';
 
     public InputReader(InputStream stream) {
-        this.stream = stream;
+        this(stream, 1 << 16);
     }
 
-    private long readWholeNumber(int c) {
-        long res = 0;
-        do {
-            if (c < '0' || c > '9') {
-                throw new InputMismatchException();
-            }
-            res *= 10;
-            res += c - '0';
-            c = read();
-        } while (!isSpaceChar(c));
-        return res;
+    public InputReader(InputStream stream, int bufSize) {
+        this.stream = stream;
+        this.buf = new byte[bufSize];
     }
 
     private int read() {
-        if (numChars == -1) {
-            throw new InputMismatchException();
-        }
-        if (curChar >= numChars) {
-            curChar = 0;
+        if (ptr == len) {
             try {
-                numChars = stream.read(buf);
-
+                len = stream.read(buf, 0, buf.length);
             } catch (IOException e) {
-                throw new InputMismatchException();
+                throw new UncheckedIOException(e);
             }
-            if (numChars <= 0) {
-                return -1;
+            ptr = 0;
+            if (len <= 0) {
+                len = 0;
+                return EOF;
             }
         }
-        return buf[curChar++];
+        // `& 0xFF`: a non-ASCII byte must not look like EOF (-1)
+        return buf[ptr++] & 0xFF;
+    }
+
+    private static boolean isBlank(int c) {
+        return c >= 0 && c <= ' ';
+    }
+
+    private int skipBlanks() {
+        int c = read();
+        while (isBlank(c)) c = read();
+        return c;
+    }
+
+    /**
+     * When the last token ended inside a line, eats the trailing spaces, tabs and CR of that line and
+     * its line break, so {@link #nextLine()} starts on the next line even with trailing spaces.
+     * Stops before the next non-blank byte. Done here, not after each token, to keep tokens fast.
+     */
+    private void finishTokenLine() {
+        if (lastEnd == '\n' || lastEnd == EOF) return;
+        lastEnd = '\n';
+        int c = read();
+        while (c == ' ' || c == '\t' || c == '\r') c = read();
+        if (c != '\n' && c != EOF) ptr--; // safe: read() just returned a byte
+    }
+
+    private void putTok(int n, int c) {
+        if (n == tok.length) tok = Arrays.copyOf(tok, n << 1);
+        tok[n] = (byte) c;
+    }
+
+    /** True if one more token is left. Does not consume it. */
+    public boolean hasNext() {
+        int c = skipBlanks();
+        if (c == EOF) return false;
+        ptr--; // safe: read() just returned a byte, so ptr >= 1
+        return true;
     }
 
     public int nextInt() {
-        int c = read();
-        while (isSpaceChar(c)) {
+        int c = skipBlanks();
+        boolean neg = c == '-';
+        if (neg || c == '+') c = read();
+        // accumulate as a negative number, so Integer.MIN_VALUE also fits
+        int res = 0;
+        while (c >= '0' && c <= '9') {
+            res = res * 10 - (c - '0');
             c = read();
         }
-        int sgn = 1;
-        if (c == '-') {
-            sgn = -1;
-            c = read();
-        }
-        int res = (int) readWholeNumber(c);
-        return res * sgn;
-    }
-
-    public char nextCharacter() {
-        int c;
-        for (c = this.read(); isSpaceChar(c); c = this.read()) ;
-        return (char) c;
-    }
-
-    public String nextString() {
-        int c = read();
-        while (isSpaceChar(c)) {
-            c = read();
-        }
-        StringBuilder res = new StringBuilder();
-        do {
-            res.appendCodePoint(c);
-            c = read();
-        } while (!isSpaceChar(c));
-        return res.toString();
-    }
-
-    public String nextLine() {
-        int c = read();
-        while (isSpaceChar(c)) {
-            c = read();
-        }
-        StringBuilder res = new StringBuilder();
-        do {
-            res.appendCodePoint(c);
-            c = read();
-        } while (!isNewlineChar(c));
-        return res.toString();
-    }
-
-    public double nextDouble() {
-        int c = read();
-        while (isSpaceChar(c)) {
-            c = read();
-        }
-        int sgn = 1;
-        if (c == '-') {
-            sgn = -1;
-            c = read();
-        }
-        double res = 0;
-        while (!isSpaceChar(c) && c != '.') {
-            if (c == 'e' || c == 'E') {
-                return res * Math.pow(10, nextInt());
-            }
-            if (c < '0' || c > '9') {
-                throw new InputMismatchException();
-            }
-            res *= 10;
-            res += c - '0';
-            c = read();
-        }
-        if (c == '.') {
-            c = read();
-            double m = 1;
-            while (!isSpaceChar(c)) {
-                if (c == 'e' || c == 'E') {
-                    return res * Math.pow(10, nextInt());
-                }
-                if (c < '0' || c > '9') {
-                    throw new InputMismatchException();
-                }
-                m /= 10;
-                res += (c - '0') * m;
-                c = read();
-            }
-        }
-        return res * sgn;
+        lastEnd = c;
+        return neg ? res : -res;
     }
 
     public long nextLong() {
-        int c = read();
-        while (isSpaceChar(c)) {
+        int c = skipBlanks();
+        boolean neg = c == '-';
+        if (neg || c == '+') c = read();
+        long res = 0;
+        while (c >= '0' && c <= '9') {
+            res = res * 10 - (c - '0');
             c = read();
         }
-        int sgn = 1;
-        if (c == '-') {
-            sgn = -1;
-            c = read();
-        }
-        long res = readWholeNumber(c);
-        return res * sgn;
+        lastEnd = c;
+        return neg ? res : -res;
+    }
+
+    /** Exact parse (handles exponents too). Hand-made digit loops lose precision. */
+    public double nextDouble() {
+        return Double.parseDouble(next());
+    }
+
+    /** Next non-blank character (ASCII). */
+    public char nextCharacter() {
+        return (char) skipBlanks();
     }
 
     public String next() {
-        return nextString();
-    }
-
-    public boolean isSpaceChar(int c) {
-        if (filter != null) {
-            return filter.isSpaceChar(c);
+        int c = skipBlanks();
+        int n = 0;
+        while (c > ' ') {
+            putTok(n++, c);
+            c = read();
         }
-        return c == ' ' || c == '\n' || c == '\r' || c == '\t' || c == -1;
+        lastEnd = c;
+        return new String(tok, 0, n, StandardCharsets.UTF_8);
     }
 
-    public boolean isNewlineChar(int c) {
-        if (filter != null) {
-            return filter.isSpaceChar(c);
+    /** Same as {@link #next()}. */
+    public String nextString() {
+        return next();
+    }
+
+    /**
+     * Reads the rest of the current line, without the line break ({@code \n} or {@code \r\n}).
+     * A token read eats the line break that ends it, so after {@code nextInt()} at the end of a line,
+     * this returns the whole next line. After a token in the middle of a line, it returns the rest.
+     */
+    public String nextLine() {
+        finishTokenLine();
+        int c = read();
+        int n = 0;
+        while (c != EOF && c != '\n') {
+            if (c != '\r') putTok(n++, c);
+            c = read();
         }
-        return c == '\n' || c == -1;
+        return new String(tok, 0, n, StandardCharsets.UTF_8);
     }
 
-    public interface SpaceCharFilter {
-        boolean isSpaceChar(int ch);
+    public int[] nextIntArray(int n) {
+        int[] a = new int[n];
+        for (int i = 0; i < n; i++) a[i] = nextInt();
+        return a;
+    }
+
+    public long[] nextLongArray(int n) {
+        long[] a = new long[n];
+        for (int i = 0; i < n; i++) a[i] = nextLong();
+        return a;
     }
 }
